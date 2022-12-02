@@ -1,0 +1,74 @@
+Introduction
+We're tired of having to manually update several containers, so we've decided to look for an automated solution.
+
+After doing some research, we have discovered Watchtower, a container that updates all running containers when changes are made to the image that it is running.
+
+We need to create a Dockerfile that will be used to create a Docker image. The image will be pushed to Docker Hub.
+
+Next, you will create a container using this image. Once the image is created, you will deploy the Watchtower container. After Watchtower is deployed, you will update the Dockerfile, rebuild the image, and push the changes to Docker Hub.
+
+Watchtower checks for changes every 30 seconds. Once it detects the changes, Watchtower will update the running container.
+
+For more information on Watchtower you can go here.
+
+Logging Into the Lab
+First make sure that you have a Docker Hub account. We'll need it to complete the lab. Then log into the environment using the credentials provided on the lab overview page, either in a terminal session on your local machine or by clicking Instant Terminal.
+
+In this lab, we will be using Watchtower to monitor containers for updates. In order to complete this learning activity, we will need a Docker Hub account.
+
+In the home directory of cloud_user we will find the lab directory. Change to that directory.
+
+Create the Dockerfile
+We need to create a Dockerfile (with any text editor you like). First get into the lab directory:
+
+[cloud_user@host]$ cd lab
+Now create the Dockerfile (we're using vi here):
+
+[cloud_user@host]$ vi Dockerfile
+Now put the following into it:
+
+FROM node
+RUN mkdir -p /var/node
+ADD src/ /var/node/
+WORKDIR /var/node
+RUN npm install
+EXPOSE 3000
+CMD ./bin/www
+Log in to Docker Hub
+[cloud_user@host]$ docker login -u [DOCKER_HUB_USERNAME]
+Build the Docker Image
+[cloud_user@host]$ docker image build -t [USERNAME]/lab-watchtower -f Dockerfile .
+Create a Demo Container
+Create the container that Watchtower will monitor:
+
+[cloud_user@host]$ docker container run -d --name demo-app -p 80:3000 --restart always [USERNAME]/lab-watchtower
+Make sure it's running:
+
+[cloud_user@host]$ docker container ls
+Create the Watchtower Container
+This next container will be the one monitoring the demo-app container. Start it up with this:
+
+[cloud_user@host]$ docker run -d --name watchtower --restart always -v /var/run/docker.sock:/var/run/docker.sock v2tec/watchtower -i 30
+List the containers again to make sure the watchtower container is running:
+
+[cloud_user@host]$ docker container ls
+Update the Docker Image
+We need to edit Dockerfile, making a change that Watchtower will see and implement. Add a mkdir command after the one that's already in there:
+
+FROM node
+RUN mkdir -p /var/node
+RUN mkdir -p /var/test
+ADD src/ /var/node/
+WORKDIR /var/node
+RUN npm install
+EXPOSE 3000
+CMD ./bin/www
+Rebuild the Image:
+[cloud_user@host]$ docker build -t [USERNAME]/lab-watchtower -f Dockerfile .
+Push the New Image:
+[cloud_user@host]$ docker image push [USERNAME]/lab-watchtower
+Checking
+Now if we run docker container ls periodically, we'll eventually see that the demo-app container has a newer CREATED time than the watchtower container does. This means that Watchtower saw the change we made, and restarted the other container using the new image.
+
+Conclusion
+Our days of manually updating containers are over! Watchtower will see any changes we make to images, then go ahead and implement them automatically. Congratulations!
